@@ -23,25 +23,25 @@ export type LoadKey = "dbTimePerSec" | "dbCpuPerSec" | "redoPerSec" | "logicalRe
 export type EffKey = "bufferNowait" | "bufferHit" | "libraryHit" | "softParse" | "executeToParse" | "latchHit" | "parseCpuToElapsed" | "nonParseCpu" | "inMemorySort" | "redoNowait";
 
 export type AwrMetrics = {
-  dbName?: string;
-  instance?: string;
-  version?: string;
-  rac?: boolean;
-  beginSnap?: string;
-  endSnap?: string;
-  elapsedMin?: number;
-  dbTimeMin?: number;
-  cpus?: number;
+  dbName?: string | undefined;
+  instance?: string | undefined;
+  version?: string | undefined;
+  rac?: boolean | undefined;
+  beginSnap?: string | undefined;
+  endSnap?: string | undefined;
+  elapsedMin?: number | undefined;
+  dbTimeMin?: number | undefined;
+  cpus?: number | undefined;
   load: Partial<Record<LoadKey, number>>;
   eff: Partial<Record<EffKey, number>>;
-  hostCpu: { user?: number; sys?: number; wio?: number; idle?: number };
+  hostCpu: { user?: number | undefined; sys?: number | undefined; wio?: number | undefined; idle?: number } | undefined;
   events: WaitEvent[];
   sqlElapsed: SqlHot[];
   sqlReads: SqlHot[];
-  pgaCacheHit?: number;
-  sgaAdvice?: { currentDbTime: number; bestDbTime: number; bestFactor: number };
-  pgaOverallocAtCurrent?: number;
-  sharedPoolPct?: { begin?: number; end?: number };
+  pgaCacheHit?: number | undefined;
+  sgaAdvice?: { currentDbTime: number | undefined; bestDbTime: number; bestFactor: number };
+  pgaOverallocAtCurrent?: number | undefined;
+  sharedPoolPct?: { begin?: number | undefined; end?: number | undefined } | undefined;
 };
 
 export type ParsedAwr = {
