@@ -104,7 +104,7 @@ export function evaluate(m: AwrMetrics): Finding[] {
   // ---- Phase 02 waits
   const top = m.events.filter((e) => e.name !== "DB CPU");
   if (top.length) {
-    const t1 = top[0];
+    const t1 = top[0]!;
     const bad = /^(enq: TX - row lock contention|library cache|latch|cursor: pin S wait on X|buffer busy waits|free buffer waits|log file switch|enq: HW)/i.test(t1.name);
     push({
       checkId: "wait-top5",

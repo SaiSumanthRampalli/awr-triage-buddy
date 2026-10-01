@@ -34,14 +34,13 @@ export type AwrMetrics = {
   cpus?: number | undefined;
   load: Partial<Record<LoadKey, number>>;
   eff: Partial<Record<EffKey, number>>;
-  hostCpu: { user?: number | undefined; sys?: number | undefined; wio?: number | undefined; idle?: number } | undefined;
+  hostCpu: { user?: number | undefined; sys?: number | undefined; wio?: number | undefined; idle?: number | undefined };
   events: WaitEvent[];
   sqlElapsed: SqlHot[];
   sqlReads: SqlHot[];
   pgaCacheHit?: number | undefined;
-  sgaAdvice?: { currentDbTime: number | undefined; bestDbTime: number; bestFactor: number };
+  sgaAdvice?: { currentDbTime: number; bestDbTime: number; bestFactor: number } | undefined;
   pgaOverallocAtCurrent?: number | undefined;
-  sharedPoolPct?: { begin?: number | undefined; end?: number | undefined } | undefined;
 };
 
 export type ParsedAwr = {
@@ -122,7 +121,9 @@ function textToRows(text: string): Row[] {
 export function parseAwr(fileName: string, content: string): ParsedAwr {
   const isHtml = /<html|<table/i.test(content.slice(0, 5000));
   const warnings: string[] = [];
-  const rows = isHtml ? htmlToRows(content).rows : textToRows(content);
+  const rawRows = isHtml ? htmlToRows(content).rows : textToRows(content);
+  const rows = rawRows;
+  const R = (i: number): Row => rawRows[i] ?? [];
   const joined = rows.map((r) => r.join("  ")).join("\n");
 
   const m: AwrMetrics = { load: {}, eff: {}, hostCpu: {}, events: [], sqlElapsed: [], sqlReads: [] };
@@ -138,8 +139,8 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   // Header table: DB Name ... Release / RAC
   const hdrIdx = rows.findIndex((r) => r.some((c) => /^DB Name$/i.test(c)));
   if (hdrIdx >= 0 && rows[hdrIdx + 1]) {
-    const h = rows[hdrIdx];
-    const v = rows[hdrIdx + 1];
+    const h = R(hdrIdx);
+    const v = R(hdrIdx + 1);
     const get = (re: RegExp) => {
       const i = h.findIndex((c) => re.test(c));
       return i >= 0 ? v[i] : undefined;
@@ -152,8 +153,8 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   }
   const cpuIdx = rows.findIndex((r) => r.some((c) => /^CPUs$/i.test(c)));
   if (cpuIdx >= 0 && rows[cpuIdx + 1]) {
-    const i = rows[cpuIdx].findIndex((c) => /^CPUs$/i.test(c));
-    const v = num(rows[cpuIdx + 1][i]);
+    const i = R(cpuIdx).findIndex((c) => /^CPUs$/i.test(c));
+    const v = num(R(cpuIdx + 1)[i]);
     if (v != null && v < 10000) m.cpus = v;
   }
   if (m.cpus == null) m.cpus = rx(/NUM_CPUS\s+([\d,]+)/i);
@@ -206,8 +207,8 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   // Host CPU
   const hcIdx = rows.findIndex((r) => r.some((c) => /^%Idle$/i.test(c)) && r.some((c) => /%User/i.test(c)));
   if (hcIdx >= 0 && rows[hcIdx + 1]) {
-    const h = rows[hcIdx];
-    const v = rows[hcIdx + 1];
+    const h = R(hcIdx);
+    const v = R(hcIdx + 1);
     // Text reports may lose leading load-average columns; align from the right.
     const off = v.length - h.length;
     const at = (re: RegExp) => {
@@ -221,8 +222,8 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   const evStart = rows.findIndex((r) => /Top (10|5) (Foreground Events|Timed (Foreground )?Events)/i.test(r.join(" ")));
   if (evStart >= 0) {
     for (let i = evStart + 1; i < Math.min(rows.length, evStart + 40); i++) {
-      const r = rows[i];
-      const name = r[0];
+      const r = R(i);
+      const name = r[0] ?? "";
       if (!name) continue;
       if (/^(Event|-+|~+)/i.test(name)) continue;
       if (/Wait Classes|Time Model|Host CPU|Foreground Wait Class|Wait Class/i.test(name) && m.events.length) break;
@@ -235,7 +236,7 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
         if (m.events.length >= 3) break;
         continue;
       }
-      const last = r[r.length - 1];
+      const last = r[r.length - 1] ?? "";
       const hasClass = num(last) == null;
       m.events.push({
         name,
@@ -253,13 +254,13 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
     const s = rows.findIndex((r) => r.length <= 2 && title.test(r.join(" ")));
     if (s < 0) return false;
     for (let i = s + 1; i < rows.length && out.length < 10; i++) {
-      const r = rows[i];
+      const r = R(i);
       if (r.length <= 2 && /^SQL ordered by/i.test(r.join(" ")) && i > s + 1) break;
       const idIdx = r.findIndex((c) => /^[0-9a-z]{13}$/.test(c));
       if (idIdx < 0) continue;
       const nums = r.slice(0, idIdx).map(num);
       out.push({
-        sqlId: r[idIdx],
+        sqlId: r[idIdx] ?? "",
         elapsedS: nums[0] ?? null,
         execs: nums[1] ?? null,
         perExecS: nums[2] ?? null,
@@ -275,8 +276,8 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   // PGA cache hit
   const pgaIdx = rows.findIndex((r) => r.some((c) => /^PGA Cache Hit %$/i.test(c)));
   if (pgaIdx >= 0 && rows[pgaIdx + 1]) {
-    const i = rows[pgaIdx].findIndex((c) => /^PGA Cache Hit %$/i.test(c));
-    m.pgaCacheHit = num(rows[pgaIdx + 1][i]) ?? undefined;
+    const i = R(pgaIdx).findIndex((c) => /^PGA Cache Hit %$/i.test(c));
+    m.pgaCacheHit = num(R(pgaIdx + 1)[i]) ?? undefined;
   }
   if (m.pgaCacheHit == null) m.pgaCacheHit = rx(/PGA Cache Hit %:?\s+([\d.]+)/i);
 
@@ -285,9 +286,9 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   if (sgaIdx >= 0) {
     const pts: { f: number; t: number }[] = [];
     for (let i = sgaIdx + 1; i < Math.min(rows.length, sgaIdx + 40); i++) {
-      const r = rows[i].map(num);
+      const r = R(i).map(num);
       if (r.length >= 3 && r[0] != null && r[1] != null && r[2] != null && r[1]! <= 4) pts.push({ f: r[1]!, t: r[2]! });
-      else if (pts.length && rows[i].length <= 2) break;
+      else if (pts.length && R(i).length <= 2) break;
     }
     const cur = pts.find((p) => Math.abs(p.f - 1) < 0.01);
     if (cur && pts.length) {
@@ -300,7 +301,7 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   const pmaIdx = rows.findIndex((r) => r.length <= 2 && /^PGA Memory Advisory/i.test(r.join(" ")));
   if (pmaIdx >= 0) {
     for (let i = pmaIdx + 1; i < Math.min(rows.length, pmaIdx + 40); i++) {
-      const r = rows[i].map(num);
+      const r = R(i).map(num);
       if (r.length >= 6 && r[1] != null && Math.abs(r[1]! - 1) < 0.01) {
         m.pgaOverallocAtCurrent = r[r.length - 1] ?? undefined;
         break;
