@@ -19,6 +19,9 @@ export type SqlHot = {
   text: string;
 };
 
+export type LoadKey = "dbTimePerSec" | "dbCpuPerSec" | "redoPerSec" | "logicalReadsPerSec" | "physicalReadsPerSec" | "userCallsPerSec" | "parsesPerSec" | "hardParsesPerSec" | "executesPerSec" | "transactionsPerSec";
+export type EffKey = "bufferNowait" | "bufferHit" | "libraryHit" | "softParse" | "executeToParse" | "latchHit" | "parseCpuToElapsed" | "nonParseCpu" | "inMemorySort" | "redoNowait";
+
 export type AwrMetrics = {
   dbName?: string;
   instance?: string;
@@ -29,8 +32,8 @@ export type AwrMetrics = {
   elapsedMin?: number;
   dbTimeMin?: number;
   cpus?: number;
-  load: Record<string, number>;
-  eff: Record<string, number>;
+  load: Partial<Record<LoadKey, number>>;
+  eff: Partial<Record<EffKey, number>>;
   hostCpu: { user?: number; sys?: number; wio?: number; idle?: number };
   events: WaitEvent[];
   sqlElapsed: SqlHot[];
@@ -163,7 +166,7 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
   m.endSnap = snap("End");
 
   // Load profile (per second column is the first number after label)
-  const loadLabels: [string, RegExp][] = [
+  const loadLabels: [LoadKey, RegExp][] = [
     ["dbTimePerSec", /^DB Time\(s\):?$/i],
     ["dbCpuPerSec", /^DB CPU\(s\):?$/i],
     ["redoPerSec", /^Redo size( \(bytes\))?:?$/i],
@@ -183,7 +186,7 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
     }
   }
 
-  const effRx: [string, RegExp][] = [
+  const effRx: [EffKey, RegExp][] = [
     ["bufferNowait", /Buffer Nowait %:?\s+([\d.]+)/i],
     ["bufferHit", /Buffer\s+Hit\s+%:?\s+([\d.]+)/i],
     ["libraryHit", /Library Hit\s+%:?\s+([\d.]+)/i],

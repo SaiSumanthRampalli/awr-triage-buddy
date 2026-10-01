@@ -9,7 +9,7 @@ export type Finding = {
   status: Status;
   observed: string;
   threshold: string;
-  action?: string;
+  action?: string | undefined;
 };
 
 const f = (n: number | undefined | null, d = 1) =>
