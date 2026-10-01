@@ -151,6 +151,9 @@ export function parseAwr(fileName: string, content: string): ParsedAwr {
     if (rac) m.rac = /yes/i.test(rac);
     m.instance = get(/^Instance$/i);
   }
+  const ver = joined.match(/\b(\d{1,2}\.\d+\.\d+\.\d+\.\d+)\b/);
+  if (ver && !(m.version && /\d+\.\d+/.test(m.version))) m.version = ver[1];
+  if (m.rac == null && /\bRAC\b/.test(joined)) m.rac = /RAC[^\n]*\n[^\n]*\bYES\b/i.test(joined);
   const cpuIdx = rows.findIndex((r) => r.some((c) => /^CPUs$/i.test(c)));
   if (cpuIdx >= 0 && rows[cpuIdx + 1]) {
     const i = R(cpuIdx).findIndex((c) => /^CPUs$/i.test(c));
