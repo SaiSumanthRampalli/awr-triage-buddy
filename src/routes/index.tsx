@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   phases,
@@ -85,6 +85,12 @@ function Index() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              to="/analyze"
+              className="rounded-md bg-primary px-2.5 py-1 font-mono text-xs text-primary-foreground"
+            >
+              analyze AWR files →
+            </Link>
             <div className="h-1.5 w-40 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-primary transition-all duration-500"
